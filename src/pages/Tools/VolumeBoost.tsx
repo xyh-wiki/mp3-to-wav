@@ -123,7 +123,7 @@ const VolumeBoostPage: React.FC = () => {
                   value={gainDb}
                   onChange={(e) => setGainDb(Number(e.target.value) || 0)}
                 />
-                <p className="field-help">Positive values increase volume, negative values reduce it. Recommended range: -12 to +12 dB.</p>
+                <p className="field-help">Positive values increase volume, negative values reduce it.</p>
               </div>
             </div>
 
