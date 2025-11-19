@@ -135,10 +135,16 @@ const Mp3ToWavPage: React.FC = () => {
         description="Convert MP3 to WAV fully offline in your browser using WebAssembly."
         canonical="https://mp3-to-wav.xyh.wiki/tools/mp3-to-wav"
       />
-      <div className="container">
+      <div className="page-container">
         <section className="section">
           <h1 className="section-title">MP3 → WAV Converter</h1>
           <p className="section-subtitle">All conversions are processed locally in your browser.</p>
+
+          <div className="page-badges">
+            <span className="page-badge">No upload</span>
+            <span className="page-badge">Runs locally in your browser</span>
+            <span className="page-badge">Powered by WebAssembly FFmpeg</span>
+          </div>
 
           <Card>
             <div
@@ -231,7 +237,7 @@ const Mp3ToWavPage: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <Button variant="primary" onClick={handleConvertAll} loading={isConvertingAll}>
-                
+                Convert all files
               </Button>
               <Button variant="secondary" onClick={clearAll} disabled={files.length === 0}>
                 Clear list
@@ -300,6 +306,16 @@ const Mp3ToWavPage: React.FC = () => {
               </table>
             </Card>
           )}
+
+          <Card style={{ marginTop: 24 }}>  <div className="tool-tips">
+    <h2 className="tool-tips-title">Usage tips</h2>
+    <ul className="tool-tips-list">
+      <li>Best suited for short clips, samples and small batches of files.</li>
+      <li>Keep the browser tab open while conversion is running.</li>
+      <li>If conversion fails, try a lower bitrate or shorter trim range.</li>
+    </ul>
+  </div>
+</Card>
         </section>
       </div>
     </>

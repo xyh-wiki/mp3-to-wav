@@ -133,10 +133,16 @@ const WavToMp3Page: React.FC = () => {
         description="Convert WAV to MP3 directly in your browser using WebAssembly at mp3-to-wav.xyh.wiki."
         canonical="https://mp3-to-wav.xyh.wiki/tools/wav-to-mp3"
       />
-      <div className="container">
+      <div className="page-container">
         <section className="section">
           <h1 className="section-title">WAV → MP3 Converter</h1>
           <p className="section-subtitle">
+
+          <div className="page-badges">
+            <span className="page-badge">No upload</span>
+            <span className="page-badge">Runs locally in your browser</span>
+            <span className="page-badge">Powered by WebAssembly FFmpeg</span>
+          </div>
             Compress large WAV files into MP3 format locally in your browser.
           </p>
 
@@ -211,7 +217,7 @@ const WavToMp3Page: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <Button variant="primary" onClick={handleConvertAll} loading={isConvertingAll}>
-                
+                Convert all files
               </Button>
               <Button variant="secondary" onClick={clearAll} disabled={files.length === 0}>
                 Clear list
@@ -280,6 +286,16 @@ const WavToMp3Page: React.FC = () => {
               </table>
             </Card>
           )}
+
+          <Card style={{ marginTop: 24 }}>  <div className="tool-tips">
+    <h2 className="tool-tips-title">Usage tips</h2>
+    <ul className="tool-tips-list">
+      <li>Best suited for short clips, samples and small batches of files.</li>
+      <li>Keep the browser tab open while conversion is running.</li>
+      <li>If conversion fails, try a lower bitrate or shorter trim range.</li>
+    </ul>
+  </div>
+</Card>
         </section>
       </div>
     </>

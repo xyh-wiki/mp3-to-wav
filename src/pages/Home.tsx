@@ -39,36 +39,63 @@ const HomePage: React.FC = () => {
       <div className="home-page">
         {/* Hero banner with soft gradient background */}
         <section className="hero-banner">
-          <div className="hero-banner-inner">
-            <p className="hero-eyebrow">mp3-to-wav.xyh.wiki · Browser audio toolkit</p>
-            <h1 className="hero-heading">
-              MP3 ⇆ WAV Converter
-              <br />
-              &amp; Browser Audio Toolkit
-            </h1>
-            <p className="hero-subtitle">
-              Convert MP3 to WAV and WAV to MP3 directly in your browser using WebAssembly FFmpeg.
-              No upload, no registration, no watermark. A focused set of audio utilities for small
-              daily tasks, demos and quick edits.
-            </p>
+  <div className="hero-banner-inner hero-layout">
+    {/* Left side: main heading & CTA */}
+    <div className="hero-left">
+      <p className="hero-eyebrow">mp3-to-wav.xyh.wiki · Browser audio toolkit</p>
+      <h1 className="hero-heading">
+        MP3 ⇆ WAV Converter
+        <br />
+        &amp; browser audio toolkit
+      </h1>
+      <p className="hero-subtitle">
+        Convert MP3 to WAV and WAV to MP3 directly in your browser with WebAssembly FFmpeg.
+        No upload, no registration, no watermark. A focused set of audio utilities for
+        everyday work, demos and side projects.
+      </p>
 
-            <div className="hero-actions">
-              <Link to="/tools/mp3-to-wav" className="btn hero-btn-primary">
-                Convert MP3 to WAV
-              </Link>
-              <Link to="/tools/wav-to-mp3" className="btn hero-btn-secondary">
-                Convert WAV to MP3
-              </Link>
-            </div>
+      <div className="hero-actions">
+        <Link to="/tools/mp3-to-wav" className="btn hero-btn-primary">
+          Convert MP3 to WAV
+        </Link>
+        <Link to="/tools/wav-to-mp3" className="btn hero-btn-secondary">
+          Convert WAV to MP3
+        </Link>
+      </div>
 
-            <p className="hero-badges">
-              <span>No upload</span>
-              <span>Runs locally in your browser</span>
-              <span>Powered by WebAssembly FFmpeg</span>
-            </p>
-          </div>
-        </section>
+      <p className="hero-badges">
+        <span>No upload</span>
+        <span>Runs locally in your browser</span>
+        <span>Powered by WebAssembly FFmpeg</span>
+      </p>
+    </div>
 
+    {/* Right side: quick tool shortcuts */}
+    <div className="hero-right">
+      <Card className="hero-tools-card">
+        <p className="hero-tools-label">Quick audio tools</p>
+        <ul className="hero-tools-list">
+          <li>
+            <Link to="/tools/mp3-to-wav">MP3 → WAV converter</Link>
+          </li>
+          <li>
+            <Link to="/tools/wav-to-mp3">WAV → MP3 converter</Link>
+          </li>
+          <li>
+            <Link to="/tools/volume-boost">Volume booster</Link>
+          </li>
+          <li>
+            <Link to="/tools/silence-removal">Silence remover</Link>
+          </li>
+        </ul>
+        <p className="hero-tools-note">
+          All processing happens on your device using WebAssembly FFmpeg. Audio files never
+          leave your browser.
+        </p>
+      </Card>
+    </div>
+  </div>
+</section>
         {/* Popular tools section */}
         <section className="home-section">
           <div className="home-section-header">

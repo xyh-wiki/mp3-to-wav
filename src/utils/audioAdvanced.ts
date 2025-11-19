@@ -71,11 +71,25 @@ export async function adjustVolume(
   const filter = `volume=${gainDb}dB`
   const args = ['-i', input, '-af', filter, '-y', output]
 
-  await ffmpeg.exec(args)
-  const out = (await ffmpeg.readFile(output)) as Uint8Array
-
-  await ffmpeg.deleteFile(input)
-  await ffmpeg.deleteFile(output)
+  let out: Uint8Array
+  try {
+    await ffmpeg.exec(args)
+    out = (await ffmpeg.readFile(output)) as Uint8Array
+  } catch (err) {
+    console.error('[audioAdvanced.adjustVolume] ffmpeg error', err)
+    throw new Error('Volume adjustment failed')
+  } finally {
+    try {
+      await ffmpeg.deleteFile(input)
+    } catch (e) {
+      // ignore
+    }
+    try {
+      await ffmpeg.deleteFile(output)
+    } catch (e) {
+      // ignore
+    }
+  }
 
   return fileDataToBlob(out, mime)
 }
@@ -94,17 +108,31 @@ export async function removeSilence(
 
   await ffmpeg.writeFile(input, await fileToUint8Array(file))
 
+  // Use only silenceremove filter to avoid missing afftdn filter in some ffmpeg.wasm builds
   const filter =
-    'afftdn,' +
     'silenceremove=start_periods=1:start_silence=0.3:start_threshold=-45dB:window=0.5'
 
   const args = ['-i', input, '-af', filter, '-y', output]
 
-  await ffmpeg.exec(args)
-  const out = (await ffmpeg.readFile(output)) as Uint8Array
-
-  await ffmpeg.deleteFile(input)
-  await ffmpeg.deleteFile(output)
+  let out: Uint8Array
+  try {
+    await ffmpeg.exec(args)
+    out = (await ffmpeg.readFile(output)) as Uint8Array
+  } catch (err) {
+    console.error('[audioAdvanced.removeSilence] ffmpeg error', err)
+    throw new Error('Silence removal failed')
+  } finally {
+    try {
+      await ffmpeg.deleteFile(input)
+    } catch (e) {
+      // ignore
+    }
+    try {
+      await ffmpeg.deleteFile(output)
+    } catch (e) {
+      // ignore
+    }
+  }
 
   return fileDataToBlob(out, mime)
 }
