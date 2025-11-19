@@ -24,7 +24,25 @@ async function fileToUint8Array(file: File): Promise<Uint8Array> {
   const buf = await file.arrayBuffer()
   return new Uint8Array(buf)
 }
-
+/**
+ * @Author:XYH
+ * @Date:2025-11-19
+ * @Description: 根据 MIME 类型推断一个合适的文件扩展名，用于 ffmpeg.wasm 虚拟文件系统
+ */
+function guessAudioExtByMime(mime: string | undefined): string {
+  if (!mime) {
+    return '.mp3'
+  }
+  const lower = mime.toLowerCase()
+  if (lower.includes('wav')) return '.wav'
+  if (lower.includes('ogg')) return '.ogg'
+  if (lower.includes('flac')) return '.flac'
+  if (lower.includes('m4a')) return '.m4a'
+  if (lower.includes('aac')) return '.aac'
+  if (lower.includes('webm')) return '.webm'
+  if (lower.includes('mp3')) return '.mp3'
+  return '.mp3'
+}
 /**
  * @description Uint8Array  Blob MIME 
  */
@@ -53,68 +71,80 @@ export async function getFFmpeg(): Promise<FFmpeg> {
 }
 
 /**
- * 1️⃣  / 
- * @param file   
- * @param gainDb dB
+ * @Author:XYH
+ * @Date:2025-11-19
+ * @Description: 使用 ffmpeg.wasm 调整音量（增加 / 减少），并返回新的音频 Blob
  */
 export async function adjustVolume(
-  file: File,
-  gainDb: number,
-  mime: string = 'audio/mpeg'
+    file: File,
+    gainDb: number,
+    mime: string = 'audio/mpeg'
 ): Promise<Blob> {
+  // 复用全局 ffmpeg 实例
   const ffmpeg = await getFFmpeg()
-  const input = 'in_volume'
-  const output = 'out_volume'
 
+  // 根据 MIME 推断扩展名，保证 ffmpeg 能正确识别输入 / 输出格式
+  const ext = guessAudioExtByMime(mime)
+  const input = `in_volume${ext}`
+  const output = `out_volume${ext}`
+
+  // 将浏览器 File 写入虚拟文件系统
   await ffmpeg.writeFile(input, await fileToUint8Array(file))
 
+  // 构造滤镜：volume=±XdB
   const filter = `volume=${gainDb}dB`
   const args = ['-i', input, '-af', filter, '-y', output]
 
   let out: Uint8Array
+
   try {
+    // 执行 ffmpeg 命令，如果命令行有问题会在这里抛错
     await ffmpeg.exec(args)
     out = (await ffmpeg.readFile(output)) as Uint8Array
   } catch (err) {
+    // 打到控制台方便调试具体 ffmpeg 日志
     console.error('[audioAdvanced.adjustVolume] ffmpeg error', err)
     throw new Error('Volume adjustment failed')
   } finally {
+    // 无论成功或失败，都尝试清理虚拟文件，失败也忽略
     try {
       await ffmpeg.deleteFile(input)
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
     try {
       await ffmpeg.deleteFile(output)
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
   }
 
-  return fileDataToBlob(out, mime)
+  // 按原 MIME 类型返回 Blob（默认 audio/mpeg）
+  return fileDataToBlob(out, mime || 'audio/mpeg')
 }
 
 /**
- * 2️⃣  + 
- * @description  afftdn  silenceremove 
+ * @Author:XYH
+ * @Date:2025-11-19
+ * @Description: 使用 ffmpeg.wasm 删除音频中的静音片段
  */
 export async function removeSilence(
-  file: File,
-  mime: string = 'audio/mpeg'
+    file: File,
+    mime: string = 'audio/mpeg'
 ): Promise<Blob> {
   const ffmpeg = await getFFmpeg()
-  const input = 'in_silence'
-  const output = 'out_silence'
+
+  // 同样为静音处理加上扩展名，避免 ffmpeg 无法识别格式
+  const ext = guessAudioExtByMime(mime)
+  const input = `in_silence${ext}`
+  const output = `out_silence${ext}`
 
   await ffmpeg.writeFile(input, await fileToUint8Array(file))
 
-  // Use only silenceremove filter to avoid missing afftdn filter in some ffmpeg.wasm builds
+  // 这里只使用 silenceremove，避免某些 wasm 版本缺少 afftdn 滤镜导致直接失败
   const filter =
-    'silenceremove=start_periods=1:start_silence=0.3:start_threshold=-45dB:window=0.5'
+      'silenceremove=start_periods=1:start_silence=0.3:start_threshold=-45dB:window=0.5'
 
   const args = ['-i', input, '-af', filter, '-y', output]
 
   let out: Uint8Array
+
   try {
     await ffmpeg.exec(args)
     out = (await ffmpeg.readFile(output)) as Uint8Array
@@ -124,17 +154,13 @@ export async function removeSilence(
   } finally {
     try {
       await ffmpeg.deleteFile(input)
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
     try {
       await ffmpeg.deleteFile(output)
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
   }
 
-  return fileDataToBlob(out, mime)
+  return fileDataToBlob(out, mime || 'audio/mpeg')
 }
 
 /**
