@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: 404 页面
+ * @Description: 404 
  */
 import React from 'react'
 import SEO from '../components/common/SEO'

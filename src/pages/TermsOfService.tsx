@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: Terms of Service 页面
+ * @Description: Terms of Service 
  */
 import React from 'react'
 import SEO from '../components/common/SEO'

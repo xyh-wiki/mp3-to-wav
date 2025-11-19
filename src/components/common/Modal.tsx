@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: 模态框组件
+ * @Description: 
  */
 import React from 'react'
 import Button from './Button'
@@ -27,7 +27,7 @@ const Modal: React.FC<Props> = ({ open, title, onClose, children }) => {
         <div className="modal-content">{children}</div>
         <div className="modal-footer">
           <Button variant="secondary" onClick={onClose}>
-            关闭
+            
           </Button>
         </div>
       </div>

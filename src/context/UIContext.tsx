@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: 全局 UI 状态（Toast）
+ * @Description:  UI Toast
  */
 import React, { createContext, useContext, useState, useCallback } from 'react'
 

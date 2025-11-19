@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: Privacy Policy 页面
+ * @Description: Privacy Policy 
  */
 import React from 'react'
 import SEO from '../components/common/SEO'

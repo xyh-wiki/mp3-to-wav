@@ -1,6 +1,24 @@
 export default {
-  'home.title': '在线 MP3 转 WAV 转换器',
-  'home.subtitle': '在浏览器本地完成音频转换，无需上传，保护隐私。',
-  'common.start': '立即开始',
-  'common.allTools': '查看全部工具'
+  // Navigation (placeholder, kept in English to avoid Chinese on page)
+  'nav.brand': 'mp3-to-wav.xyh.wiki',
+  'nav.home': 'Home',
+  'nav.tools': 'Tools',
+  'nav.about': 'About',
+  'nav.faq': 'FAQ',
+  'nav.contact': 'Contact',
+  'nav.language.en': 'EN',
+  'nav.language.zh': 'ZH',
+
+  // Home page
+  'home.title': 'Online MP3 to WAV & WAV to MP3 Converter',
+  'home.subtitle': 'Convert audio directly in your browser using WebAssembly FFmpeg. No upload, no account, privacy friendly.',
+  'home.cta.primary': 'MP3 → WAV Converter',
+  'home.cta.secondary': 'WAV → MP3 Converter',
+  'home.hero.bullet1': '100% in-browser, powered by WebAssembly FFmpeg.',
+  'home.hero.bullet2': 'No file upload — audio never leaves your device.',
+  'home.hero.bullet3': 'Simple UI, designed for everyday audio workflows.',
+
+  // Generic
+  'common.start': 'Start now',
+  'common.allTools': 'Browse all tools'
 }

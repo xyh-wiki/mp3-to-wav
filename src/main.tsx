@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: React 入口文件
+ * @Description: React 
  */
 import React from 'react'
 import ReactDOM from 'react-dom/client'

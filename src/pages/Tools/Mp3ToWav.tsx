@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: MP3 → WAV 转换页面
+ * @Description: MP3 → WAV 
  */
 import React, { useState, useRef, useCallback } from 'react'
 import SEO from '../../components/common/SEO'
@@ -41,7 +41,7 @@ const Mp3ToWavPage: React.FC = () => {
       const newItems: FileItem[] = []
       Array.from(list).forEach((file) => {
         if (!file.name.toLowerCase().endsWith('.mp3')) {
-          addToast({ type: 'error', message: '仅支持 MP3 文件' })
+          addToast({ type: 'error', message: 'Only MP3 files are supported' })
           return
         }
         newItems.push({
@@ -93,17 +93,17 @@ const Mp3ToWavPage: React.FC = () => {
       setFiles((prev) =>
         prev.map((f) =>
           f.id === item.id
-            ? { ...f, status: 'error', errorMessage: err?.message || '转换失败' }
+            ? { ...f, status: 'error', errorMessage: err?.message || 'Conversion failed' }
             : f
         )
       )
-      addToast({ type: 'error', message: `文件 ${item.name} 转换失败` })
+      addToast({ type: 'error', message: `File ${item.name} failed to convert` })
     }
   }
 
   const handleConvertAll = async () => {
     if (files.length === 0) {
-      addToast({ type: 'info', message: '请先添加 MP3 文件' })
+      addToast({ type: 'info', message: 'Please add at least one MP3 file first' })
       return
     }
     setIsConvertingAll(true)
@@ -112,7 +112,7 @@ const Mp3ToWavPage: React.FC = () => {
         if (item.status === 'done') continue
         await convertOne(item)
       }
-      addToast({ type: 'success', message: '所有文件转换完成' })
+      addToast({ type: 'success', message: 'All files have been converted' })
     } finally {
       setIsConvertingAll(false)
     }
@@ -149,7 +149,7 @@ const Mp3ToWavPage: React.FC = () => {
               onDrop={handleDrop}
               onClick={openFilePicker}
             >
-              <p>点击选择或拖拽 MP3 文件至此</p>
+              <p>Click or drag MP3 files here</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -231,10 +231,10 @@ const Mp3ToWavPage: React.FC = () => {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <Button variant="primary" onClick={handleConvertAll} loading={isConvertingAll}>
-                开始转换
+                
               </Button>
               <Button variant="secondary" onClick={clearAll} disabled={files.length === 0}>
-                清空列表
+                Clear list
               </Button>
             </div>
           </Card>
@@ -244,10 +244,10 @@ const Mp3ToWavPage: React.FC = () => {
               <table className="file-table">
                 <thead>
                   <tr>
-                    <th>文件名</th>
-                    <th>大小</th>
-                    <th>状态</th>
-                    <th>操作</th>
+                    <th>File name</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,17 +281,17 @@ const Mp3ToWavPage: React.FC = () => {
                           onClick={() => convertOne(item)}
                           disabled={item.status === 'converting'}
                         >
-                          单独转换
+                          Convert individually
                         </Button>
                         <Button
                           variant="ghost"
                           onClick={() => downloadOne(item)}
                           disabled={!item.url}
                         >
-                          下载 WAV
+                          Download WAV
                         </Button>
                         <Button variant="ghost" onClick={() => removeFile(item.id)}>
-                          删除
+                          Remove
                         </Button>
                       </td>
                     </tr>

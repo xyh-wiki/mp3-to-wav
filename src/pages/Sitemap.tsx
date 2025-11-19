@@ -1,7 +1,7 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: HTML Sitemap 页面
+ * @Description: HTML Sitemap 
  */
 import React from 'react'
 import SEO from '../components/common/SEO'
