@@ -2,14 +2,13 @@
  * @Author:XYH
  * @Date:2025-11-19
  * @Description: 使用 ffmpeg.wasm 在浏览器中完成音频转换（MP3 ↔ WAV）
- *
- * 说明：
- * 1. 不再在模块顶层使用 `import { createFFmpeg, fetchFile }`，避免构建期的「not exported」错误；
- * 2. 改为在运行时通过 `await import('@ffmpeg/ffmpeg')` 动态加载模块，
- *    再从模块对象中安全地拿到 createFFmpeg / fetchFile，兼容 CJS / ESM 各种打包模式；
- * 3. 所有 ffmpeg 的初始化逻辑统一放在 ensureFFmpegLoaded() 中，转换前调用一次即可。
  */
 
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'  // ✅ 官方标准导入方式
+
+/**
+ * 转换参数配置
+ */
 export interface ConvertOptions {
   bitrateKbps?: number      // 比特率，例如 128 / 192 / 320
   sampleRate?: number       // 采样率，例如 44100 / 48000
@@ -18,51 +17,22 @@ export interface ConvertOptions {
   trimEnd?: number          // 裁剪结束时间（秒，可选，仅 MP3→WAV 使用）
 }
 
-// 全局单例 ffmpeg 实例 & fetchFile 函数
+// 全局复用 ffmpeg 实例，避免多次加载 wasm
 let ffmpeg: any = null
-let fetchFileFn: ((input: any) => Promise<Uint8Array> | Uint8Array) | null = null
-let ffmpegLoadingPromise: Promise<void> | null = null
 
 /**
- * 动态加载 @ffmpeg/ffmpeg 模块，并初始化 ffmpeg 实例
- * 只会真正执行一次，后续重复调用会直接复用 Promise / 实例
+ * 懒加载 ffmpeg 实例
+ * 只在第一次使用时加载 WebAssembly 资源，后续复用
  */
-async function ensureFFmpegLoaded(): Promise<void> {
-  // 如果已有正在进行的加载，直接等待它完成
-  if (ffmpegLoadingPromise) {
-    return ffmpegLoadingPromise
+async function loadFFmpeg() {
+  if (!ffmpeg) {
+    ffmpeg = createFFmpeg({
+      log: false, // 调试时可以改为 true 查看详细日志
+    })
   }
-
-  ffmpegLoadingPromise = (async () => {
-    // 动态 import 模块，避免构建期检查「未导出」
-    const mod: any = await import('@ffmpeg/ffmpeg')
-
-    // 模块可能是：
-    // 1）纯 ESM：{ createFFmpeg, fetchFile }
-    // 2）default 包了一层：{ default: { createFFmpeg, fetchFile } }
-    const createFFmpeg =
-        mod.createFFmpeg ||
-        (mod.default && mod.default.createFFmpeg)
-
-    const fetchFile =
-        mod.fetchFile ||
-        (mod.default && mod.default.fetchFile)
-
-    if (typeof createFFmpeg !== 'function' || typeof fetchFile !== 'function') {
-      // 这里抛出的错误会出现在控制台里，方便调试
-      throw new Error('ffmpeg.wasm 模块加载失败：未找到 createFFmpeg / fetchFile 导出')
-    }
-
-    ffmpeg = createFFmpeg({ log: false })
-    fetchFileFn = fetchFile
-
-    // 真正加载 WebAssembly 资源
-    if (!ffmpeg.isLoaded()) {
-      await ffmpeg.load()
-    }
-  })()
-
-  return ffmpegLoadingPromise
+  if (!ffmpeg.isLoaded()) {
+    await ffmpeg.load()
+  }
 }
 
 /**
@@ -74,19 +44,13 @@ export const convertMp3ToWav = async (
     file: File,
     options: ConvertOptions = {}
 ): Promise<Blob> => {
-  // 确保 ffmpeg 已经初始化
-  await ensureFFmpegLoaded()
-
-  if (!ffmpeg || !fetchFileFn) {
-    throw new Error('ffmpeg 未正确初始化')
-  }
+  await loadFFmpeg()
 
   const inputName = 'input.mp3'
   const outputName = 'output.wav'
 
-  // 将浏览器的 File 写入到 ffmpeg 的内存文件系统
-  const data = await fetchFileFn(file)
-  ffmpeg.FS('writeFile', inputName, data)
+  // 将浏览器 File 写入到 ffmpeg 内存文件系统
+  ffmpeg.FS('writeFile', inputName, await fetchFile(file))
 
   const args: string[] = ['-i', inputName]
 
@@ -118,14 +82,14 @@ export const convertMp3ToWav = async (
   // 执行转换
   await ffmpeg.run(...args)
 
-  // 从内存中读取输出文件
+  // 从内存读取输出文件
   const out = ffmpeg.FS('readFile', outputName)
 
   // 清理中间文件
   ffmpeg.FS('unlink', inputName)
   ffmpeg.FS('unlink', outputName)
 
-  // 返回浏览器可用的 Blob（WAV）
+  // 返回 WAV Blob
   return new Blob([out.buffer], { type: 'audio/wav' })
 }
 
@@ -138,17 +102,12 @@ export const convertWavToMp3 = async (
     file: File,
     options: ConvertOptions = {}
 ): Promise<Blob> => {
-  await ensureFFmpegLoaded()
-
-  if (!ffmpeg || !fetchFileFn) {
-    throw new Error('ffmpeg 未正确初始化')
-  }
+  await loadFFmpeg()
 
   const inputName = 'input.wav'
   const outputName = 'output.mp3'
 
-  const data = await fetchFileFn(file)
-  ffmpeg.FS('writeFile', inputName, data)
+  ffmpeg.FS('writeFile', inputName, await fetchFile(file))
 
   const args: string[] = ['-i', inputName]
 
