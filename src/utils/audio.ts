@@ -2,9 +2,16 @@
  * @Author:XYH
  * @Date:2025-11-19
  * @Description: 使用 ffmpeg.wasm 在浏览器中完成音频转换（MP3 ↔ WAV）
+ *
+ * 说明：
+ * 1. 不再使用 `import { createFFmpeg, fetchFile }` 命名导入，避免 Rollup 构建时报
+ *    "createFFmpeg is not exported by ..."；
+ * 2. 改为命名空间导入：`import * as FFmpegWasm from '@ffmpeg/ffmpeg'`，
+ *    再在运行时从模块对象上兼容性地读取 createFFmpeg / fetchFile，
+ *    适配 CJS / ESM 的不同导出方式。
  */
 
-import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg'  // ✅ 官方标准导入方式
+import * as FFmpegWasm from '@ffmpeg/ffmpeg'
 
 /**
  * 转换参数配置
@@ -17,6 +24,28 @@ export interface ConvertOptions {
   trimEnd?: number          // 裁剪结束时间（秒，可选，仅 MP3→WAV 使用）
 }
 
+/**
+ * 兼容性处理：
+ * - 有的环境是：export { createFFmpeg, fetchFile }
+ * - 有的环境是：export default { createFFmpeg, fetchFile }
+ * 这里统一从两种路径上尝试拿方法，避免 “hm is not a function” 这类问题。
+ */
+const ffmpegModule: any = FFmpegWasm as any
+
+const createFFmpegFn =
+    ffmpegModule.createFFmpeg ||
+    (ffmpegModule.default && ffmpegModule.default.createFFmpeg)
+
+const fetchFileFn =
+    ffmpegModule.fetchFile ||
+    (ffmpegModule.default && ffmpegModule.default.fetchFile)
+
+if (typeof createFFmpegFn !== 'function' || typeof fetchFileFn !== 'function') {
+  // 如果走到这里，说明当前 @ffmpeg/ffmpeg 版本确实不对，后面转换肯定也跑不通。
+  // 这里抛出明确错误，方便你在开发环境中看到。
+  throw new Error('当前 @ffmpeg/ffmpeg 模块中未找到 createFFmpeg / fetchFile，请检查依赖版本')
+}
+
 // 全局复用 ffmpeg 实例，避免多次加载 wasm
 let ffmpeg: any = null
 
@@ -26,8 +55,8 @@ let ffmpeg: any = null
  */
 async function loadFFmpeg() {
   if (!ffmpeg) {
-    ffmpeg = createFFmpeg({
-      log: false, // 调试时可以改为 true 查看详细日志
+    ffmpeg = createFFmpegFn({
+      log: false // 调试时可以改为 true 查看详细日志
     })
   }
   if (!ffmpeg.isLoaded()) {
@@ -50,7 +79,7 @@ export const convertMp3ToWav = async (
   const outputName = 'output.wav'
 
   // 将浏览器 File 写入到 ffmpeg 内存文件系统
-  ffmpeg.FS('writeFile', inputName, await fetchFile(file))
+  ffmpeg.FS('writeFile', inputName, await fetchFileFn(file))
 
   const args: string[] = ['-i', inputName]
 
@@ -107,7 +136,7 @@ export const convertWavToMp3 = async (
   const inputName = 'input.wav'
   const outputName = 'output.mp3'
 
-  ffmpeg.FS('writeFile', inputName, await fetchFile(file))
+  ffmpeg.FS('writeFile', inputName, await fetchFileFn(file))
 
   const args: string[] = ['-i', inputName]
 
