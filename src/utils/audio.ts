@@ -1,17 +1,10 @@
 /**
  * @Author:XYH
  * @Date:2025-11-19
- * @Description: 使用 ffmpeg.wasm 在浏览器中完成音频转换（MP3 ↔ WAV）
- *
- * 说明：
- * 1. 不再使用 `import { createFFmpeg, fetchFile }` 命名导入，避免 Rollup 构建时报
- *    "createFFmpeg is not exported by ..."；
- * 2. 改为命名空间导入：`import * as FFmpegWasm from '@ffmpeg/ffmpeg'`，
- *    再在运行时从模块对象上兼容性地读取 createFFmpeg / fetchFile，
- *    适配 CJS / ESM 的不同导出方式。
+ * @Description: 使用新版 @ffmpeg/ffmpeg（FFmpeg 类）在浏览器中完成音频转换（MP3 ↔ WAV）
  */
 
-import * as FFmpegWasm from '@ffmpeg/ffmpeg'
+import { FFmpeg } from '@ffmpeg/ffmpeg'
 
 /**
  * 转换参数配置
@@ -25,43 +18,28 @@ export interface ConvertOptions {
 }
 
 /**
- * 兼容性处理：
- * - 有的环境是：export { createFFmpeg, fetchFile }
- * - 有的环境是：export default { createFFmpeg, fetchFile }
- * 这里统一从两种路径上尝试拿方法，避免 “hm is not a function” 这类问题。
+ * 将浏览器 File 转为 Uint8Array，方便写入 ffmpeg 虚拟文件系统
  */
-const ffmpegModule: any = FFmpegWasm as any
-
-const createFFmpegFn =
-    ffmpegModule.createFFmpeg ||
-    (ffmpegModule.default && ffmpegModule.default.createFFmpeg)
-
-const fetchFileFn =
-    ffmpegModule.fetchFile ||
-    (ffmpegModule.default && ffmpegModule.default.fetchFile)
-
-if (typeof createFFmpegFn !== 'function' || typeof fetchFileFn !== 'function') {
-  // 如果走到这里，说明当前 @ffmpeg/ffmpeg 版本确实不对，后面转换肯定也跑不通。
-  // 这里抛出明确错误，方便你在开发环境中看到。
-  throw new Error('当前 @ffmpeg/ffmpeg 模块中未找到 createFFmpeg / fetchFile，请检查依赖版本')
+async function fileToUint8Array(file: File): Promise<Uint8Array> {
+  const buf = await file.arrayBuffer()
+  return new Uint8Array(buf)
 }
 
-// 全局复用 ffmpeg 实例，避免多次加载 wasm
-let ffmpeg: any = null
+// 全局复用一个 FFmpeg 实例，避免多次初始化 wasm 和 worker
+let ffmpegInstance: FFmpeg | null = null
 
 /**
- * 懒加载 ffmpeg 实例
- * 只在第一次使用时加载 WebAssembly 资源，后续复用
+ * 懒加载并初始化 FFmpeg 实例
  */
-async function loadFFmpeg() {
-  if (!ffmpeg) {
-    ffmpeg = createFFmpegFn({
-      log: false // 调试时可以改为 true 查看详细日志
-    })
+async function getFFmpeg(): Promise<FFmpeg> {
+  if (!ffmpegInstance) {
+    ffmpegInstance = new FFmpeg()
   }
-  if (!ffmpeg.isLoaded()) {
-    await ffmpeg.load()
+  if (!ffmpegInstance.loaded) {
+    // 这里不指定 corePath，使用 @ffmpeg/ffmpeg 内置的 CORE_URL（走 unpkg CDN）
+    await ffmpegInstance.load()
   }
+  return ffmpegInstance
 }
 
 /**
@@ -73,17 +51,19 @@ export const convertMp3ToWav = async (
     file: File,
     options: ConvertOptions = {}
 ): Promise<Blob> => {
-  await loadFFmpeg()
+  const ffmpeg = await getFFmpeg()
 
   const inputName = 'input.mp3'
   const outputName = 'output.wav'
 
-  // 将浏览器 File 写入到 ffmpeg 内存文件系统
-  ffmpeg.FS('writeFile', inputName, await fetchFileFn(file))
+  // 写入输入文件
+  const inputData = await fileToUint8Array(file)
+  await ffmpeg.writeFile(inputName, inputData)
 
-  const args: string[] = ['-i', inputName]
+  const args: string[] = []
 
-  // 裁剪参数
+  // ⚠ 注意新版 API：这里 args 就是完整命令行参数数组
+  // 裁剪参数（简单处理：放在 -i 前后都可以，这里按 “先 -ss/-to 再 -i” 的习惯来）
   if (options.trimStart && options.trimStart > 0) {
     args.push('-ss', String(options.trimStart))
   }
@@ -91,7 +71,10 @@ export const convertMp3ToWav = async (
     args.push('-to', String(options.trimEnd))
   }
 
-  // 比特率（对 WAV 影响不大，可不设置）
+  // 输入输出
+  args.push('-i', inputName)
+
+  // 比特率
   if (options.bitrateKbps) {
     args.push('-b:a', `${options.bitrateKbps}k`)
   }
@@ -106,20 +89,26 @@ export const convertMp3ToWav = async (
     args.push('-ac', String(options.channels))
   }
 
+  // 输出文件名
   args.push(outputName)
 
-  // 执行转换
-  await ffmpeg.run(...args)
+  // 执行转换命令
+  await ffmpeg.exec(args)
 
-  // 从内存读取输出文件
-  const out = ffmpeg.FS('readFile', outputName)
+  // 读取输出文件
+  const outData = await ffmpeg.readFile(outputName)
 
-  // 清理中间文件
-  ffmpeg.FS('unlink', inputName)
-  ffmpeg.FS('unlink', outputName)
+  // 清理虚拟文件，避免长时间占内存
+  try {
+    await ffmpeg.deleteFile(inputName)
+    await ffmpeg.deleteFile(outputName)
+  } catch (e) {
+    // 删除失败不影响主流程，这里忽略就行
+    // console.warn('清理 ffmpeg 虚拟文件失败：', e)
+  }
 
   // 返回 WAV Blob
-  return new Blob([out.buffer], { type: 'audio/wav' })
+  return new Blob([outData.buffer], { type: 'audio/wav' })
 }
 
 /**
@@ -131,14 +120,18 @@ export const convertWavToMp3 = async (
     file: File,
     options: ConvertOptions = {}
 ): Promise<Blob> => {
-  await loadFFmpeg()
+  const ffmpeg = await getFFmpeg()
 
   const inputName = 'input.wav'
   const outputName = 'output.mp3'
 
-  ffmpeg.FS('writeFile', inputName, await fetchFileFn(file))
+  const inputData = await fileToUint8Array(file)
+  await ffmpeg.writeFile(inputName, inputData)
 
-  const args: string[] = ['-i', inputName]
+  const args: string[] = []
+
+  // 输入
+  args.push('-i', inputName)
 
   // 比特率（对 MP3 大小和音质影响较大）
   if (options.bitrateKbps) {
@@ -155,15 +148,19 @@ export const convertWavToMp3 = async (
     args.push('-ac', String(options.channels))
   }
 
+  // 输出
   args.push(outputName)
 
-  await ffmpeg.run(...args)
+  await ffmpeg.exec(args)
 
-  const out = ffmpeg.FS('readFile', outputName)
+  const outData = await ffmpeg.readFile(outputName)
 
-  ffmpeg.FS('unlink', inputName)
-  ffmpeg.FS('unlink', outputName)
+  try {
+    await ffmpeg.deleteFile(inputName)
+    await ffmpeg.deleteFile(outputName)
+  } catch (e) {
+    // 同样忽略清理异常
+  }
 
-  // 返回 MP3 Blob
-  return new Blob([out.buffer], { type: 'audio/mpeg' })
+  return new Blob([outData.buffer], { type: 'audio/mpeg' })
 }
